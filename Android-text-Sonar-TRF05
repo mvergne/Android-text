@@ -1,0 +1,62 @@
+/*-+.
+ * . */int prvValue;
+ int TrigPin = 10;
+ int EcoPin = A5;
+ long Duration = 0;
+
+void setup() {
+  Serial.begin(9600);
+  pinMode(4, OUTPUT);
+  pinMode(TrigPin,OUTPUT);
+  pinMode(EcoPin,INPUT);
+  Serial.begin(9600);
+  
+  prvValue = 0;
+}
+
+void loop() {
+  digitalWrite(TrigPin, LOW); 
+  delayMicroseconds(2);
+  digitalWrite(TrigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TrigPin, LOW);
+  Duration = pulseIn(EcoPin,HIGH);
+  long Distance_cm = Distance(Duration);
+  
+  Serial.print(Distance_cm);
+  Serial.println();
+  
+  if(Serial.available()){
+    byte cmd = Serial.read();
+    if(cmd == 0x02){
+      digitalWrite(4, LOW);
+    }else if(cmd == 0x01){
+      digitalWrite(4, HIGH);
+    }
+
+  }
+  
+  int sensorValue = analogRead(A5) >> 4;
+  byte dataToSent;
+  if(prvValue != sensorValue){
+    prvValue = sensorValue;
+    
+    if (prvValue==0x00){
+      dataToSent = (byte)0x01;
+    }else{
+      dataToSent = (byte)prvValue;
+    }
+    
+    
+    
+    Serial.write(dataToSent);
+    delay(100);
+  }
+
+}
+
+ long Distance(long time){
+  long DistanceCalc;
+  DistanceCalc = (((time /2.9)/2)/10);
+  return DistanceCalc;
+ }
