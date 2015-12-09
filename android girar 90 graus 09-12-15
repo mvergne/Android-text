@@ -1,0 +1,225 @@
+package com.example.androidusbhostarduino;
+
+import android.app.AlertDialog;
+import android.content.Context;
+import android.content.DialogInterface;
+import android.content.Intent;
+import android.hardware.usb.UsbConstants;
+import android.hardware.usb.UsbDevice;
+import android.hardware.usb.UsbDeviceConnection;
+import android.hardware.usb.UsbEndpoint;
+import android.hardware.usb.UsbInterface;
+import android.hardware.usb.UsbManager;
+import android.hardware.usb.UsbRequest;
+import android.os.Bundle;
+import android.support.v7.app.ActionBarActivity;
+import android.widget.CompoundButton;
+import android.widget.CompoundButton.OnCheckedChangeListener;
+import android.widget.SeekBar;
+import android.widget.Toast;
+import android.widget.ToggleButton;
+
+import java.nio.ByteBuffer;
+
+public class MainActivity extends ActionBarActivity implements Runnable {
+
+	private static final int CMD_LED_ON = 1;
+	private static final int CMD_LED_OFF = 2;
+	private static final int CMD_FRENTE = 3;
+	private static final int CMD_DIREITA = 4;
+	private static final int CMD_ESQUERDA = 5;
+	private static final int CMD_ATRAS = 6;
+	private static final int CMD_PARAR = 7;
+	private static final int CMD_SENSOR_DIREITA = 8;
+	private static final int CMD_SENSOR_ESQUERDA = 9;
+	private static final int CMD_SENSOR_CENTRO = 10;
+	private static final int CMD_180 = 11;
+
+	SeekBar bar;
+	ToggleButton buttonLed;
+
+	int liga =0;
+
+	private UsbManager usbManager;
+	private UsbDevice deviceFound;
+	private UsbDeviceConnection usbDeviceConnection;
+	private UsbInterface usbInterfaceFound = null;
+	private UsbEndpoint endpointOut = null;
+	private UsbEndpoint endpointIn = null;
+
+	@Override
+	protected void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
+		setContentView(R.layout.activity_main);
+
+
+		bar = (SeekBar) findViewById(R.id.seekbar);
+		buttonLed = (ToggleButton) findViewById(R.id.arduinoled);
+		buttonLed.setOnCheckedChangeListener(new OnCheckedChangeListener() {
+
+			@Override
+			public void onCheckedChanged(CompoundButton buttonView,
+										 boolean isChecked) {
+
+				if (isChecked) {
+
+					sendCommand(CMD_LED_ON);
+					liga = 1;
+
+				} else {
+					sendCommand(CMD_LED_OFF);
+
+					liga = 0;
+				}
+			}
+		});
+
+		usbManager = (UsbManager) getSystemService(Context.USB_SERVICE);
+	}
+
+	@Override
+	public void onResume() {
+		super.onResume();
+
+		Intent intent = getIntent();
+		String action = intent.getAction();
+
+		UsbDevice device = (UsbDevice) intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
+		if (UsbManager.ACTION_USB_DEVICE_ATTACHED.equals(action)) {
+			setDevice(device);
+		} else if (UsbManager.ACTION_USB_DEVICE_DETACHED.equals(action)) {
+			if (deviceFound != null && deviceFound.equals(device)) {
+				setDevice(null);
+			}
+		}
+	}
+
+	private void setDevice(UsbDevice device) {
+		usbInterfaceFound = null;
+		endpointOut = null;
+		endpointIn = null;
+
+		for (int i = 0; i < device.getInterfaceCount(); i++) {
+			UsbInterface usbif = device.getInterface(i);
+
+			UsbEndpoint tOut = null;
+			UsbEndpoint tIn = null;
+
+			int tEndpointCnt = usbif.getEndpointCount();
+			if (tEndpointCnt >= 2) {
+				for (int j = 0; j < tEndpointCnt; j++) {
+					if (usbif.getEndpoint(j).getType() == UsbConstants.USB_ENDPOINT_XFER_BULK) {
+						if (usbif.getEndpoint(j).getDirection() == UsbConstants.USB_DIR_OUT) {
+							tOut = usbif.getEndpoint(j);
+						} else if (usbif.getEndpoint(j).getDirection() == UsbConstants.USB_DIR_IN) {
+							tIn = usbif.getEndpoint(j);
+						}
+					}
+				}
+
+				if (tOut != null && tIn != null) {
+					// This interface have both USB_DIR_OUT
+					// and USB_DIR_IN of USB_ENDPOINT_XFER_BULK
+					usbInterfaceFound = usbif;
+					endpointOut = tOut;
+					endpointIn = tIn;
+				}
+			}
+
+		}
+
+		if (usbInterfaceFound == null) {
+			return;
+		}
+
+		deviceFound = device;
+
+		if (device != null) {
+			UsbDeviceConnection connection =
+					usbManager.openDevice(device);
+			if (connection != null &&
+					connection.claimInterface(usbInterfaceFound, true)) {
+				usbDeviceConnection = connection;
+				Thread thread = new Thread(this);
+				thread.start();
+
+			} else {
+				usbDeviceConnection = null;
+			}
+		}
+	}
+
+
+	private void sendCommand(int control) {
+		synchronized (this) {
+
+			if (usbDeviceConnection != null) {
+				byte[] message = new byte[1];
+				message[0] = (byte) control;
+				usbDeviceConnection.bulkTransfer(endpointOut,
+						message, message.length, 0);
+			}
+		}
+	}
+
+	@Override
+	public void run() {
+		ByteBuffer buffer = ByteBuffer.allocate(1);
+		UsbRequest request = new UsbRequest();
+		request.initialize(usbDeviceConnection, endpointIn);
+		while (true) {
+			if (request.queue(buffer, 1) == true) {
+				if (usbDeviceConnection.requestWait() == request) {
+					byte rxCmd = buffer.get(0);
+					if (rxCmd != 0) {
+
+						if (liga == 1){
+
+							bar.setProgress((int) rxCmd);
+
+							if (rxCmd < 10) {
+								sendCommand(CMD_SENSOR_CENTRO);
+								sendCommand(CMD_ATRAS);
+							}
+
+							if (rxCmd > 10 && rxCmd < 25){
+								sendCommand(CMD_SENSOR_DIREITA);
+								sendCommand(CMD_DIREITA);
+
+							} if (rxCmd  >= 25){
+								sendCommand(CMD_SENSOR_CENTRO);
+								sendCommand(CMD_FRENTE);
+							}
+						}
+
+						if (liga == 0) {
+
+							sendCommand(CMD_SENSOR_CENTRO);
+							sendCommand(CMD_PARAR);
+
+						}
+
+						//conectado ao sensor/ direita  e direita = cmd=-1
+					}if(rxCmd == -1){
+
+					}
+					try {
+						Thread.sleep(100);
+					} catch (InterruptedException e) {
+					}
+				} else {
+					break;
+				}
+			} else {
+				AlertDialog.Builder builder = new AlertDialog.Builder(this);
+				builder.setTitle("Alerta");
+				builder.setMessage("Dados não recebidos");
+				builder.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+					public void onClick(DialogInterface arg0, int arg1) {
+						Toast.makeText(MainActivity.this, "Verifique conexão", Toast.LENGTH_SHORT).show();
+					}
+				});
+			}
+		}
+	}
+}
