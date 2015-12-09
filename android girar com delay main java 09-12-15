@@ -179,17 +179,15 @@ public class MainActivity extends ActionBarActivity implements Runnable {
 
 								if (rxCmd < 10) {
 
-									sendCommand((CMD_DIREITA));
-									//sendCommand(CMD_ATRAS);
+									sendCommand(CMD_ATRAS);
 
-								/*} if (rxCmd > 10 && rxCmd < 25){
+								} if (rxCmd > 10 && rxCmd < 25){
 									sendCommand(CMD_DIREITA);
 
-*/
-								} if (rxCmd  >= 10){
+								} if (rxCmd  >= 25){
 
 								sendCommand(CMD_FRENTE);
-							}
+								}
 							}
 
 						if (liga == 0) {
