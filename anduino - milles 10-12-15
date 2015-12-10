@@ -1,0 +1,166 @@
+#include <Servo.h>
+
+ const int pingPin = 10;
+ long duration;
+ int cm;
+ int distancia;
+ int Led = 2; 
+ Servo motorE;
+ Servo motorD;
+ Servo motorS;
+
+unsigned long tempo;
+
+void setup() {
+  Serial.begin(9600);
+  pinMode(2, OUTPUT);
+  motorS.attach(11);
+  motorS.write(90);
+  
+}
+
+void loop() {
+
+  leituraSensor();
+  tempo = millis();
+    
+    int cmd = Serial.read();
+
+      if (cm> 30){
+      cm=30;
+      }
+
+  byte dataToSent;
+    
+     dataToSent = (byte)cm;
+     
+    Serial.write(dataToSent);
+    Serial.println();
+    
+      delay(200); 
+
+      if(tempo > 3000){
+        motorE.detach();
+        motorD.detach();
+    }
+
+    switch(cmd){
+      case (0x01):
+      //Led on
+        tempo = 0;
+        digitalWrite(2,HIGH);
+        break;
+        
+      case (0x02):
+      //Led off
+        tempo = 0;
+        digitalWrite(2,LOW);
+        break;
+        
+      case('3'):
+      //Frente
+        tempo =0;
+        motorE.attach(13);
+        motorD.attach(12);
+        motorE.writeMicroseconds(1700);
+        motorD.writeMicroseconds(-1700);
+        break;
+        
+      case(0x04):
+      //Direita
+        tempo = 0;
+        motorE.attach(13);
+        motorD.attach(12);
+        motorE.writeMicroseconds(1700);
+        motorD.writeMicroseconds(1700);
+        delay(500);
+        motorE.detach();
+        motorD.detach();
+        break;
+        
+      case(0x05):
+      //Esquerda
+        tempo = 0;
+        motorE.attach(13);
+        motorD.attach(12);
+        motorE.writeMicroseconds(1500);
+        motorD.writeMicroseconds(1500);
+        delay(450);
+        motorE.detach();
+        motorD.detach();
+        break;
+        
+      case(0x06):
+      //Ré
+        tempo = 0;
+        digitalWrite(2,LOW);
+        motorE.attach(13);
+        motorD.attach(12);
+        motorE.writeMicroseconds(-1700);
+        motorD.writeMicroseconds(1700);
+        digitalWrite(2,HIGH);
+        break;
+        
+      case('7'):
+      //Parar
+        tempo = 0;
+        motorE.detach();
+        motorD.detach();
+        break;
+
+      case (0x08):
+      //Sensor p/ direita
+        tempo = 0;
+        motorS.write(0);
+        break;
+
+      case (0x09):
+      //Sensor p/ esquerda
+        tempo = 0;
+        motorS.write(180);
+        break;
+
+      case (0x0a):
+      //Sensor no centro
+        tempo = 0;
+        motorS.write(90);
+        break;
+
+      case (0x0b):
+      //180º
+        tempo = 0;
+        motorE.attach(13);
+        motorD.attach(12);
+        motorE.writeMicroseconds(1700);
+        motorD.writeMicroseconds(1700);
+        delay(1700);
+        motorE.detach();
+        motorD.detach();
+        break;
+    }
+  
+}
+
+int leituraSensor(){
+
+  pinMode(pingPin, OUTPUT);
+  digitalWrite(pingPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(pingPin, HIGH);
+  delayMicroseconds(5);
+  digitalWrite(pingPin, LOW);
+
+  pinMode(pingPin, INPUT);
+  duration = pulseIn(pingPin, HIGH);
+
+  cm = microsecondsToCentimeters(duration);
+
+  return cm;
+     
+  }
+
+  long microsecondsToCentimeters(long microseconds){ 
+    /* Função matemática para converter tempo 
+    em distância do sensor Ultrassônico */
+  return microseconds / 29 / 2;
+}
