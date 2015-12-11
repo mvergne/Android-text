@@ -1,0 +1,114 @@
+//incluir os motores
+#include <Servo.h>
+
+// declarar as variaveis do TRF05
+int prvValue;
+int TrigPin = 7;
+int EcoPin = 8;
+
+//variaveis do Ping Prallax
+const int PingPin = A1;
+
+//Duração
+long durationTRF;
+long durationPing;
+
+//distancia
+int cmTRF;
+int cmPing;
+
+
+int Led = 2;
+Servo motorE;
+Servo motorD;
+ 
+ 
+ void setup() {
+  
+  Serial.begin(9600);
+  pinMode(TrigPin,OUTPUT);
+  pinMode(EcoPin,INPUT);
+  pinMode(2, INPUT);
+
+  prvValue = 0;
+
+}
+
+
+
+void loop() {
+
+  int leituraTRF;
+  int leituraPing;
+
+  //sinal recebido do app ao TRF
+  byte cmdTRF = Serial.read();
+  if (cmTRF > 50){
+    cmTRF = 50;
+  }
+  byte dataToSentTRF;
+    dataToSentTRF = (byte)prvValue;
+    Serial.write(dataToSentTRF);
+
+
+  byte cmdPing = Serial.read();
+  if(cmPing > 30){
+    cmPing = 30;
+  }
+  byte dataToSentPing;
+    dataToSentPing = (byte)cmPing;
+    Serial.write(dataToSentPing);
+    
+  
+  delay(200);
+}
+
+
+
+//o valor medido pelo sensor TRF05
+int leituraTRF(){
+  
+  digitalWrite(TrigPin, LOW); 
+  delayMicroseconds(2);
+  digitalWrite(TrigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TrigPin, LOW);
+  
+  //pinMode(EcoPin, INPUT);
+  durationTRF = pulseIn(EcoPin,HIGH);
+  long distanceTRF_cm = distanceTRF(durationTRF);
+
+  cmTRF = distanceTRF(durationTRF);
+  return cmTRF;
+}
+
+
+long distanceTRF(long time){
+  //Calcular distancia do TRF05
+  
+  long distanceCalcTRF;
+  distanceCalcTRF = (((time /2.9)/2)/10);
+  return distanceCalcTRF;
+ }
+
+
+//o valor medido pelo sensor Ping
+int leituraPing(){
+  
+  pinMode(PingPin, OUTPUT);
+  digitalWrite(PingPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(PingPin, HIGH);
+  delayMicroseconds(5);
+  digitalWrite(PingPin, LOW);
+
+  pinMode(PingPin, INPUT);
+  durationPing = pulseIn(PingPin,HIGH);
+
+  cmPing = distancePing (durationPing);
+  return cmPing;
+}
+
+long distancePing (long microseconds){
+  return microseconds / 29 / 2;
+}
