@@ -2,7 +2,6 @@
 #include <Servo.h>
 
 // declarar as variaveis do TRF05
-int prvValue;
 int TrigPin = 7;
 int EcoPin = 8;
 
@@ -31,8 +30,6 @@ Servo motorD;
   pinMode(EcoPin,INPUT);
   pinMode(Led, OUTPUT);
   pinMode(PingVolt, OUTPUT);
-
-  prvValue = 0;
 
 }
 
