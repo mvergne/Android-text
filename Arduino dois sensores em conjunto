@@ -7,7 +7,7 @@ int EcoPin = 8;
 
 //variaveis do Ping Prallax
 const int PingPin = A1;
-int PingVolt = A0;
+//int PingVolt = A0;
 
 //Duração
 long durationTRF;
@@ -25,11 +25,16 @@ Servo motorD;
  
  void setup() {
   
-  Serial.begin(9600);
   pinMode(TrigPin,OUTPUT);
   pinMode(EcoPin,INPUT);
+  
   pinMode(Led, OUTPUT);
-  pinMode(PingVolt, OUTPUT);
+  digitalWrite(Led,HIGH);
+  
+  pinMode(A0, OUTPUT);
+  digitalWrite(A0,HIGH);
+
+  Serial.begin(9600);
 
 }
 
@@ -37,8 +42,8 @@ Servo motorD;
 
 void loop() {
 
-  int leituraTRF;
-  int leituraPing;
+  leituraTRF();
+  leituraPing();
 
   //sinal recebido do app ao TRF
   byte cmd = Serial.read();
@@ -53,14 +58,18 @@ void loop() {
   byte dataToSentTRF;
     dataToSentTRF = (byte)cmTRF;
     Serial.write(dataToSentTRF);
+    Serial.println();
 
+    Serial.print("frontal: ");
     Serial.println(cmTRF);
+    Serial.print("lateral: ");
     Serial.println(cmPing);
+   
+    
 
- 
     
   //delay para receber os sinais dos sensores TRF e Ping
-  delay(200);
+  delay(1000);
 
   switch(cmd){
       case (0x01):
