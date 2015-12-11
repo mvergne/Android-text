@@ -177,18 +177,15 @@ public class MainActivity extends ActionBarActivity implements Runnable {
 
 							bar.setProgress((int) rxCmd);
 
-							if (rxCmd < 10) {
-								sendCommand(CMD_SENSOR_CENTRO);
-								sendCommand(CMD_ATRAS);
+							if (rxCmd == 22) {
+								sendCommand(CMD_ESQUERDA);
 							}
 
-							if (rxCmd > 10 && rxCmd < 25){
-								sendCommand(CMD_SENSOR_DIREITA);
+							if (rxCmd > 22 && rxCmd < 51){
 								sendCommand(CMD_DIREITA);
 
-							} if (rxCmd  >= 25){
-								sendCommand(CMD_SENSOR_CENTRO);
-								sendCommand(CMD_FRENTE);
+							} if (rxCmd  == 150){
+								sendCommand(CMD_DIREITA);
 							}
 						}
 
