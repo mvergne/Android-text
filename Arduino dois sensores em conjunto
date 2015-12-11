@@ -44,25 +44,95 @@ void loop() {
   int leituraPing;
 
   //sinal recebido do app ao TRF
-  byte cmdTRF = Serial.read();
+  byte cmd = Serial.read();
   if (cmTRF > 50){
     cmTRF = 50;
   }
+
+  if(cmPing > 30){
+    cmTRF = 150;
+  }
+
   byte dataToSentTRF;
-    dataToSentTRF = (byte)prvValue;
+    dataToSentTRF = (byte)cmTRF;
     Serial.write(dataToSentTRF);
 
+    Serial.println(cmTRF);
+    Serial.println(cmPing);
 
-  byte cmdPing = Serial.read();
-  if(cmPing > 30){
-    cmPing = 30;
-  }
-  byte dataToSentPing;
-    dataToSentPing = (byte)cmPing;
-    Serial.write(dataToSentPing);
+ 
     
-  
+  //delay para receber os sinais dos sensores TRF e Ping
   delay(200);
+
+  switch(cmd){
+      case (0x01):
+      //Led on
+        digitalWrite(2,HIGH);
+        break;
+        
+      case (0x02):
+      //Led off
+        digitalWrite(2,LOW);
+        break;
+        
+      case(0x03):
+      //Frente
+        motorE.attach(13);
+        motorD.attach(12);
+        motorE.writeMicroseconds(1700);
+        motorD.writeMicroseconds(-1700);
+        break;
+        
+      case(0x04):
+      //Direita
+        motorE.attach(13);
+        motorD.attach(12);
+        motorE.writeMicroseconds(1700);
+        motorD.writeMicroseconds(1700);
+        delay(500);
+        motorE.detach();
+        motorD.detach();
+        break;
+        
+      case(0x05):
+      //Esquerda
+        motorE.attach(13);
+        motorD.attach(12);
+        motorE.writeMicroseconds(1500);
+        motorD.writeMicroseconds(1500);
+        delay(450);
+        motorE.detach();
+        motorD.detach();
+        break;
+        
+      case(0x06):
+      //Ré
+        digitalWrite(2,LOW);
+        motorE.attach(13);
+        motorD.attach(12);
+        motorE.writeMicroseconds(-1700);
+        motorD.writeMicroseconds(1700);
+        digitalWrite(2,HIGH);
+        break;
+        
+      case(0x07):
+      //Parar
+        motorE.detach();
+        motorD.detach();
+        break;
+
+      case (0x0b):
+      //180º
+        motorE.attach(13);
+        motorD.attach(12);
+        motorE.writeMicroseconds(1700);
+        motorD.writeMicroseconds(1700);
+        delay(1700);
+        motorE.detach();
+        motorD.detach();
+        break;
+    }
 }
 
 
