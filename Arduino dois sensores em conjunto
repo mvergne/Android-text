@@ -8,6 +8,7 @@ int EcoPin = 8;
 
 //variaveis do Ping Prallax
 const int PingPin = A1;
+int PingVolt = A0;
 
 //Duração
 long durationTRF;
@@ -28,7 +29,8 @@ Servo motorD;
   Serial.begin(9600);
   pinMode(TrigPin,OUTPUT);
   pinMode(EcoPin,INPUT);
-  pinMode(2, INPUT);
+  pinMode(Led, OUTPUT);
+  pinMode(PingVolt, OUTPUT);
 
   prvValue = 0;
 
