@@ -191,7 +191,6 @@ public class MainActivity extends ActionBarActivity implements Runnable {
 
 						if (liga == 0) {
 
-							sendCommand(CMD_SENSOR_CENTRO);
 							sendCommand(CMD_PARAR);
 
 						}
