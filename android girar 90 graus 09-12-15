@@ -196,9 +196,6 @@ public class MainActivity extends ActionBarActivity implements Runnable {
 						}
 
 						//conectado ao sensor/ direita  e direita = cmd=-1
-					}if(rxCmd == -1){
-
-					}
 					try {
 						Thread.sleep(100);
 					} catch (InterruptedException e) {
