@@ -40,6 +40,7 @@ public class MainActivity extends ActionBarActivity implements Runnable {
 
 	int liga =0;
 
+
 	private UsbManager usbManager;
 	private UsbDevice deviceFound;
 	private UsbDeviceConnection usbDeviceConnection;
@@ -171,20 +172,21 @@ public class MainActivity extends ActionBarActivity implements Runnable {
 			if (request.queue(buffer, 1) == true) {
 				if (usbDeviceConnection.requestWait() == request) {
 					byte rxCmd = buffer.get(0);
+					//displayRxCmd(rxCmd);
 					if (rxCmd != 0) {
 
 						if (liga == 1){
 
 							bar.setProgress((int) rxCmd);
 
-							if (rxCmd == 22) {
+							if (rxCmd < 23) {
 								sendCommand(CMD_ESQUERDA);
 							}
 
-							if (rxCmd > 22 && rxCmd < 51){
-								sendCommand(CMD_DIREITA);
+							if (rxCmd > 22 && rxCmd <31){
+								sendCommand(CMD_FRENTE);
 
-							} if (rxCmd  == 150){
+							} if (rxCmd == 40){
 								sendCommand(CMD_DIREITA);
 							}
 						}
@@ -194,8 +196,7 @@ public class MainActivity extends ActionBarActivity implements Runnable {
 							sendCommand(CMD_PARAR);
 
 						}
-
-						//conectado ao sensor/ direita  e direita = cmd=-1
+					}
 					try {
 						Thread.sleep(100);
 					} catch (InterruptedException e) {
@@ -215,4 +216,9 @@ public class MainActivity extends ActionBarActivity implements Runnable {
 			}
 		}
 	}
+
+	/*public void displayRxCmd(int number){
+		TextView quantityRxCmd = (TextView)findViewById(R.id.RxCmd12);
+		quantityRxCmd.setText(String.valueOf(number));
+	}*/
 }
