@@ -1,13 +1,15 @@
 //incluir os motores
 #include <Servo.h>
 
-// declarar as variaveis do TRF05
+// declarar as variaveis do TRF05 - sensor frontal
 int TrigPin = 7;
 int EcoPin = 8;
 
-//variaveis do Ping Prallax
+//variaveis do Ping Prallax - sensor lateral
 const int PingPin = A1;
-//int PingVolt = A0;
+
+//sensor LV
+//int LV = A5;
 
 //Duração
 long durationTRF;
@@ -16,11 +18,15 @@ long durationPing;
 //distancia
 int cmTRF;
 int cmPing;
-
+//int cmLV;
 
 int Led = 2;
 Servo motorE;
+//motor esquerda
 Servo motorD;
+//motor direita
+
+bool ligarPing = true;
  
  
  void setup() {
@@ -29,7 +35,6 @@ Servo motorD;
   pinMode(EcoPin,INPUT);
   
   pinMode(Led, OUTPUT);
-  digitalWrite(Led,HIGH);
   
   pinMode(A0, OUTPUT);
   digitalWrite(A0,HIGH);
@@ -38,38 +43,43 @@ Servo motorD;
 
 }
 
-
-
 void loop() {
 
   leituraTRF();
   leituraPing();
-
+  //cmLV = analogRead(LV)/2;
+  
   //sinal recebido do app ao TRF
   byte cmd = Serial.read();
-  if (cmTRF > 50){
-    cmTRF = 50;
+  
+  if (cmTRF > 25){
+    cmTRF = 26;
   }
-
-  if(cmPing > 30){
-    cmTRF = 150;
+  if (cmTRF <26){
+    cmTRF = 15;
   }
-
-  byte dataToSentTRF;
-    dataToSentTRF = (byte)cmTRF;
-    Serial.write(dataToSentTRF);
+  if(cmPing > 26 && ligarPing == true){
+    cmTRF = 40;
+  }
+  if(cmPing <27 && ligarPing == false){
+    ligarPing = true;
+    digitalWrite(2,HIGH);   
+  }
+  
+  byte dataToSent;
+    dataToSent = (byte)cmTRF;
+    Serial.write(dataToSent);
     Serial.println();
 
     Serial.print("frontal: ");
     Serial.println(cmTRF);
-    Serial.print("lateral: ");
+    Serial.print("lateral direita: ");
     Serial.println(cmPing);
+    //Serial.print("lateral esquerda: ");
+    //Serial.println(cmLV);
    
-    
-
-    
   //delay para receber os sinais dos sensores TRF e Ping
-  delay(1000);
+  delay(750);
 
   switch(cmd){
       case (0x01):
@@ -86,28 +96,39 @@ void loop() {
       //Frente
         motorE.attach(13);
         motorD.attach(12);
-        motorE.writeMicroseconds(1700);
-        motorD.writeMicroseconds(-1700);
+        motorE.writeMicroseconds(1555);
+        //1555
+        //1525 (atras) e 1545
+        motorD.writeMicroseconds(1500);
+        //1500
+        //1530 atras e 1512
         break;
         
       case(0x04):
       //Direita
+        digitalWrite(2,LOW);
         motorE.attach(13);
         motorD.attach(12);
-        motorE.writeMicroseconds(1700);
-        motorD.writeMicroseconds(1700);
-        delay(500);
+        motorE.writeMicroseconds(1547);
+        motorD.writeMicroseconds(1510);
+        delay(300);
+        motorE.writeMicroseconds(1590);
+        motorD.writeMicroseconds(1555);
+        digitalWrite(2,HIGH);
+        delay(1000);
+        digitalWrite(2,LOW);
         motorE.detach();
         motorD.detach();
+        ligarPing = false;
         break;
         
       case(0x05):
       //Esquerda
         motorE.attach(13);
         motorD.attach(12);
-        motorE.writeMicroseconds(1500);
-        motorD.writeMicroseconds(1500);
-        delay(450);
+        motorE.writeMicroseconds(1490);
+        motorD.writeMicroseconds(1473);
+        delay(1000);
         motorE.detach();
         motorD.detach();
         break;
@@ -154,7 +175,7 @@ int leituraTRF(){
   
   //pinMode(EcoPin, INPUT);
   durationTRF = pulseIn(EcoPin,HIGH);
-  long distanceTRF_cm = distanceTRF(durationTRF);
+  //long distanceTRF_cm = distanceTRF(durationTRF);
 
   cmTRF = distanceTRF(durationTRF);
   return cmTRF;
@@ -179,10 +200,10 @@ int leituraPing(){
   digitalWrite(PingPin, HIGH);
   delayMicroseconds(5);
   digitalWrite(PingPin, LOW);
-
   pinMode(PingPin, INPUT);
+  
   durationPing = pulseIn(PingPin,HIGH);
-
+  
   cmPing = distancePing (durationPing);
   return cmPing;
 }
