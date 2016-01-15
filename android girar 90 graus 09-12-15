@@ -30,16 +30,18 @@ public class MainActivity extends ActionBarActivity implements Runnable {
 	private static final int CMD_ESQUERDA = 5;
 	private static final int CMD_ATRAS = 6;
 	private static final int CMD_PARAR = 7;
-	private static final int CMD_SENSOR_DIREITA = 8;
-	private static final int CMD_SENSOR_ESQUERDA = 9;
-	private static final int CMD_SENSOR_CENTRO = 10;
-	private static final int CMD_180 = 11;
+	private static final int CMD_ALINHAR_ESQUERDA = 8;
+	private static final int CMD_ALINHAR_DIREITA = 9;
+	private static final int CMD_SEGUIR_PAREDE = 10; //0x0a
+	private static final int CMD_LED_WHITE_ON = 11;  //0b
+	private static final int CMD_LED_WHITE_OFF = 12;  //0c
+	private static final int CMD_CHAMAR_SENSOR_FRENTE = 13;  //0d
+	private static final int CMD_CHAMAR_SENSOR_LATERAL = 14;  //0e
 
 	SeekBar bar;
 	ToggleButton buttonLed;
 
 	int liga =0;
-
 
 	private UsbManager usbManager;
 	private UsbDevice deviceFound;
@@ -53,28 +55,22 @@ public class MainActivity extends ActionBarActivity implements Runnable {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
 
-
 		bar = (SeekBar) findViewById(R.id.seekbar);
 		buttonLed = (ToggleButton) findViewById(R.id.arduinoled);
 		buttonLed.setOnCheckedChangeListener(new OnCheckedChangeListener() {
 
 			@Override
-			public void onCheckedChanged(CompoundButton buttonView,
-										 boolean isChecked) {
-
+			public void onCheckedChanged(CompoundButton buttonView,boolean isChecked) {
 				if (isChecked) {
-
-					sendCommand(CMD_LED_ON);
+					sendCommand(CMD_CHAMAR_SENSOR_FRENTE);
 					liga = 1;
-
 				} else {
 					sendCommand(CMD_LED_OFF);
-
+					sendCommand(CMD_PARAR);
 					liga = 0;
 				}
 			}
 		});
-
 		usbManager = (UsbManager) getSystemService(Context.USB_SERVICE);
 	}
 
@@ -126,7 +122,6 @@ public class MainActivity extends ActionBarActivity implements Runnable {
 					endpointIn = tIn;
 				}
 			}
-
 		}
 
 		if (usbInterfaceFound == null) {
@@ -150,7 +145,6 @@ public class MainActivity extends ActionBarActivity implements Runnable {
 		}
 	}
 
-
 	private void sendCommand(int control) {
 		synchronized (this) {
 
@@ -172,29 +166,35 @@ public class MainActivity extends ActionBarActivity implements Runnable {
 			if (request.queue(buffer, 1) == true) {
 				if (usbDeviceConnection.requestWait() == request) {
 					byte rxCmd = buffer.get(0);
+					byte rxCmd2 = buffer.get(1);
 					//displayRxCmd(rxCmd);
 					if (rxCmd != 0) {
-
 						if (liga == 1){
-
 							bar.setProgress((int) rxCmd);
+							if(rxCmd == 10){
+								sendCommand(CMD_SEGUIR_PAREDE);
+							}
 
-							if (rxCmd < 23) {
+							/*if (rxCmd == 11) {
 								sendCommand(CMD_ESQUERDA);
 							}
 
-							if (rxCmd > 22 && rxCmd <31){
+							if (rxCmd == 10){
 								sendCommand(CMD_FRENTE);
 
 							} if (rxCmd == 40){
 								sendCommand(CMD_DIREITA);
 							}
+							if(rxCmd == 41){
+								sendCommand(CMD_ALINHAR_DIREITA);
+							}
+							if(rxCmd == 39){
+								sendCommand(CMD_ALINHAR_ESQUERDA);
+							}
 						}
 
 						if (liga == 0) {
-
-							sendCommand(CMD_PARAR);
-
+							sendCommand(CMD_PARAR);*/
 						}
 					}
 					try {
@@ -216,9 +216,5 @@ public class MainActivity extends ActionBarActivity implements Runnable {
 			}
 		}
 	}
-
-	/*public void displayRxCmd(int number){
-		TextView quantityRxCmd = (TextView)findViewById(R.id.RxCmd12);
-		quantityRxCmd.setText(String.valueOf(number));
-	}*/
 }
+
