@@ -1,0 +1,378 @@
+//incluir giroscopio
+#include<Wire.h>
+//incluir os motores
+#include <Servo.h>
+
+#define CTRL_REG1 0x20
+#define CTRL_REG2 0x21
+#define CTRL_REG3 0x22
+#define CTRL_REG4 0x23 
+
+// declarar as variaveis do TRF05 - sensor frontal
+int TrigPin = 6;
+int EcoPin = 5;
+
+//variaveis do Ping Prallax - sensor lateral
+const int PingPin = 10;
+
+//Duração
+long durationTRF;
+long durationPing;
+
+//distancia
+int cmTRF;
+int cmPing;
+
+int tempoDelay;
+int cmd = 0;
+int funcao;
+
+int LedRed = 7;
+int LedWhite= 2;
+Servo motorE;       //motor esquerda
+Servo motorD;       //motor direita
+Servo motorC;       //motor centro
+
+bool afterRe = false;
+bool ligado = false;
+bool motorC180 = true;
+
+int Addr = 105;                 // I2C address of gyro
+int x, y, z;
+
+void setup() {
+
+  MotorC_180();
+  pinMode(TrigPin,OUTPUT);
+  pinMode(EcoPin,INPUT);
+  
+  pinMode(LedWhite, OUTPUT);
+  pinMode(LedRed, OUTPUT);
+  
+  pinMode(A0, OUTPUT);
+  digitalWrite(A0,HIGH);
+
+  Wire.begin();
+  Serial.begin(9600);
+  
+  writeI2C(CTRL_REG1, 0x1F);    // Turn on all axes, disable power down
+  writeI2C(CTRL_REG3, 0x08);    // Enable control ready signal
+  writeI2C(CTRL_REG4, 0x80);    // Set scale (500 deg/sec)
+  delay(100);                   // Wait to synchronize
+  motorC.detach();
+}
+
+void loop() {
+
+  int cmd = Serial.read(); //sinal recebido do app ao HomeBot
+
+  delay(750);
+
+    if(cmd == 49){ // ligar e desligar robo
+      if(ligado == true){
+        MovParar();
+        LedWhiteOff();
+        LedRedOff();
+        ligado = false;
+        funcao = 2;  //delsigado
+      }else if(ligado == false){
+        LedWhiteOn();
+        LedRedOn();
+        ligado = true;
+        funcao = 1;  //ligado
+      }
+      Serial.println();
+      Serial.print("apertou a");
+    }
+
+    else if(cmd == 50){ //chamar sensor TRF
+      leituraTRF();
+      if (cmTRF > 33){
+        cmTRF = 32;
+      }
+      Serial.println();
+      Serial.print("frontal: ");
+      Serial.println(cmTRF);
+      funcao = cmTRF;
+      byte dataToSent;
+    dataToSent = (byte)funcao;
+    Serial.write(dataToSent);
+    }
+    
+    else if(cmd == 51){ //chamar sensor Ping
+      leituraPing();
+      if (cmPing > 33){
+        cmPing = 32;
+      }
+      Serial.println();
+      Serial.print("lateral direita: ");
+      Serial.println(cmPing);
+      funcao = cmPing;
+      byte dataToSent;
+    dataToSent = (byte)funcao;
+    Serial.write(dataToSent);
+    }
+
+    else if(cmd == 52){ //chamar sensor Giroscopio
+      getGyroValues();
+      Serial.println();
+      Serial.print("Raw Z:"); Serial.println(z);
+      funcao = z;
+      byte dataToSent;
+    dataToSent = (byte)funcao;
+    Serial.write(dataToSent);
+    }
+
+    else if(cmd == 53){  //Motor C
+      if(motorC180 == false){
+        MotorC_180();
+        motorC180 = true;
+      }
+      else if(motorC180 == true){
+        MotorC_0();
+        motorC180 = false;
+      }
+      funcao = 3;
+      Serial.print("cmd: "); Serial.println(funcao);
+      Serial.println();
+    }
+
+    else if(cmd == 54){ //frente
+      MovFrente();
+      funcao = 3;
+    }
+
+    else if(cmd == 55){ //esquerda
+      MovEsquerda();
+      delay(1000);
+      MovParar();
+      funcao = 3;
+    }
+
+    else if(cmd == 56){ //direita
+      MovDireita();
+      delay(1000);
+      MovParar();
+      funcao = 3;
+    }
+
+    else if(cmd == 57){ //re
+      MovRe();
+      funcao = 3;
+    }
+
+    else if(cmd == 48){ //alinhar esquerda
+      MovAlinharE();
+      Serial.println();
+      Serial.print("Raw Z:"); Serial.println(z);
+      funcao = 3;
+    }
+
+    else if(cmd == 61){ //alinhar direita
+      MovAlinharD();
+      Serial.println();
+      Serial.print("Raw Z:"); Serial.println(z);
+      funcao = 3;
+    }
+  
+  /*byte dataToSent;
+    dataToSent = (byte)funcao;
+    Serial.write(dataToSent);*/
+}
+
+void LedWhiteOn(){
+  digitalWrite(LedWhite,HIGH);
+  ligado = true;
+}
+
+void LedWhiteOff(){
+  digitalWrite(LedWhite,LOW);
+  ligado = false;
+}
+
+void LedRedOn(){
+  digitalWrite(LedRed,HIGH);
+  ligado = true;
+}
+
+void LedRedOff(){
+  digitalWrite(LedRed,LOW);
+  ligado = false;
+}
+
+void MovFrente(){
+  MovAttach();
+  motorE.writeMicroseconds(1555);
+  //1555
+  //1525 (atras) e 1545
+  motorD.writeMicroseconds(1500);
+  //1500
+  //1530 atras e 1512
+  funcao = 3;
+}
+
+void MovDireita(){
+  MovAttach();
+  LedRedOff();
+  LedWhiteOff();
+  ligado = false;
+  motorE.writeMicroseconds(1590);
+  motorD.writeMicroseconds(1555);
+}
+
+void MovEsquerda(){
+  MovAttach();
+  if(afterRe == false){  
+  }else if(afterRe == true){
+    delay(1200);
+    afterRe = false;
+  }
+  motorE.writeMicroseconds(1490);
+  motorD.writeMicroseconds(1473);
+}
+
+void MovParar(){
+  motorE.detach();
+  motorD.detach();
+}
+
+void MovAttach(){
+  motorE.attach(13);
+  motorD.attach(12);
+}
+
+void MovRe(){
+  MovAttach();
+  afterRe = true;
+  motorE.writeMicroseconds(1515);
+  motorD.writeMicroseconds(1540);
+}
+
+void MotorC_0(){
+  motorC.attach(11);
+  motorC.write(0);
+}
+
+void MotorC_180(){
+  motorC.attach(11);
+  motorC.write(170);
+}
+
+void MovAlinharD(){
+  getGyroValues();
+  LedWhiteOff();
+  LedRedOff();
+  MovDireita();
+  delay(tempoDelay);
+  MovParar();
+  LedWhiteOn();
+  delay(300);
+  LedRedOn();
+}
+
+void MovAlinharE(){
+  getGyroValues();
+  LedWhiteOff();
+  LedRedOff();
+  MovEsquerda();
+  delay(tempoDelay);
+  MovParar();
+  LedRedOn();
+  delay(300);
+  LedWhiteOn();
+}
+
+//o valor medido pelo sensor TRF05
+int leituraTRF(){
+  
+  digitalWrite(TrigPin, LOW); 
+  delayMicroseconds(2);
+  digitalWrite(TrigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TrigPin, LOW);
+  
+  //pinMode(EcoPin, INPUT);
+  durationTRF = pulseIn(EcoPin,HIGH);
+  //long distanceTRF_cm = distanceTRF(durationTRF);
+
+  cmTRF = distanceTRF(durationTRF);
+
+  return cmTRF;
+}
+
+long distanceTRF(long microseconds){
+  //Calcular distancia do TRF05
+  return microseconds / 29 / 2;
+}
+
+//o valor medido pelo sensor Ping
+int leituraPing(){
+  
+  pinMode(PingPin, OUTPUT);
+  digitalWrite(PingPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(PingPin, HIGH);
+  delayMicroseconds(5);
+  digitalWrite(PingPin, LOW);
+  pinMode(PingPin, INPUT);
+  
+  durationPing = pulseIn(PingPin,HIGH);
+  
+  cmPing = distancePing (durationPing);
+  
+  return cmPing;
+}
+
+long distancePing (long microseconds){
+  return microseconds / 29 / 2;
+}
+
+int getGyroValues () {
+  int MSB, LSB;
+
+  MSB = readI2C(0x29);
+  LSB = readI2C(0x28);
+  x = ((MSB << 8) | LSB);
+
+  MSB = readI2C(0x2B);
+  LSB = readI2C(0x2A);
+  y = ((MSB << 8) | LSB);
+
+  MSB = readI2C(0x2D);
+  LSB = readI2C(0x2C);
+  z = ((MSB << 8) | LSB);
+
+  x = x/600;
+  y = y/600;
+  z = z/10;
+  
+  if(z < -20){
+    tempoDelay = -z*2;
+  }
+  if(z > 6){
+    tempoDelay = z*2;
+  }
+  else{
+    tempoDelay = 0;
+  }
+
+  funcao = z;
+  return tempoDelay;
+  return funcao;
+}
+
+int readI2C (byte regAddr) {
+    Wire.beginTransmission(Addr);
+    Wire.write(regAddr);                // Register address to read
+    Wire.endTransmission();             // Terminate request
+    Wire.requestFrom(Addr, 1);          // Read a byte
+    while(!Wire.available()) { };       // Wait for receipt
+    return(Wire.read());                // Get result
+}
+
+void writeI2C (byte regAddr, byte val) {
+    Wire.beginTransmission(Addr);
+    Wire.write(regAddr);
+    Wire.write(val);
+    Wire.endTransmission();
+}
