@@ -1,0 +1,214 @@
+//Arduino enviando 3 valores ao mesmo tempo referentes aos seus sensores
+
+//incluir giroscopio
+#include<Wire.h>
+//incluir os motores
+#include <Servo.h>
+
+#define CTRL_REG1 0x20
+#define CTRL_REG2 0x21
+#define CTRL_REG3 0x22
+#define CTRL_REG4 0x23 
+
+// declarar as variaveis do TRF05 - sensor frontal
+int TrigPin = 6;
+int EcoPin = 5;
+
+//variaveis do Ping Prallax - sensor lateral
+const int PingPin = 10;
+
+//Duração
+long durationTRF;
+long durationPing;
+
+//distancia
+int cmTRF;
+int cmPing;
+
+int tempoDelay;
+int cmd = 0;
+
+int LedRed = 7;
+int LedWhite= 2;
+Servo motorE;       //motor esquerda
+Servo motorD;       //motor direita
+Servo motorC;       //motor centro
+
+bool afterRe = false;
+bool ligado = false;
+bool motorC180 = true;
+
+int Addr = 105;                 // I2C address of gyro
+int x, y, z;
+
+void setup() {
+  
+  pinMode(TrigPin,OUTPUT);
+  pinMode(EcoPin,INPUT);
+  
+  pinMode(LedWhite, OUTPUT);
+  pinMode(LedRed, OUTPUT);
+  
+  pinMode(A0, OUTPUT);
+  digitalWrite(A0,HIGH);
+
+  Wire.begin();
+  Serial.begin(9600);
+  
+  writeI2C(CTRL_REG1, 0x1F);    // Turn on all axes, disable power down
+  writeI2C(CTRL_REG3, 0x08);    // Enable control ready signal
+  writeI2C(CTRL_REG4, 0x80);    // Set scale (500 deg/sec)
+  delay(1200);                   // Wait to synchronize
+  motorC.detach();
+
+}
+
+void loop() {
+  
+  int cmd = Serial.read(); //sinal recebido do app ao HomeBot
+
+  delay(1000);
+  
+      leituraTRF();
+      if (cmTRF > 33){
+        cmTRF = 32;
+      } 
+      leituraPing();
+      if (cmPing > 33){
+        cmPing = 32;
+      }
+      getGyroValues();
+      
+      byte dataToSent [] = {cmTRF, cmPing, z};
+      
+      Serial.write(dataToSent[0]);
+      Serial.write(dataToSent[1]);
+      Serial.write(dataToSent[2]);
+      
+      Serial.println(dataToSent[0]);
+      Serial.println(dataToSent[1]);
+      Serial.println(dataToSent[2]);
+
+      if(cmd == 53){  //Motor C
+        motorC.attach(11);
+        motorC.write(170);
+      }
+      else if(cmd == 54){ //frente
+        motorE.attach(13);
+        motorD.attach(12);
+        motorE.writeMicroseconds(1555);
+        motorD.writeMicroseconds(1500);
+      }
+      else if(cmd == 57){ //re
+        motorE.attach(13);
+        motorD.attach(12);
+        motorE.writeMicroseconds(1515);
+        motorD.writeMicroseconds(1540);
+      } 
+      else if(cmd == 49){ // ligar e desligar robo
+        if(ligado == true){
+           digitalWrite(LedWhite,LOW);
+           digitalWrite(LedRed,LOW);
+           ligado = false;
+        }else if(ligado == false){
+           digitalWrite(LedWhite,HIGH);
+           digitalWrite(LedRed,HIGH);
+           ligado = true;
+        }
+     }
+}
+
+
+
+//o valor medido pelo sensor TRF05
+int leituraTRF(){
+  
+  digitalWrite(TrigPin, LOW); 
+  delayMicroseconds(2);
+  digitalWrite(TrigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TrigPin, LOW);
+  
+  //pinMode(EcoPin, INPUT);
+  durationTRF = pulseIn(EcoPin,HIGH);
+  //long distanceTRF_cm = distanceTRF(durationTRF);
+
+  cmTRF = distanceTRF(durationTRF);
+
+  return cmTRF;
+}
+
+long distanceTRF(long microseconds){
+  //Calcular distancia do TRF05
+  return microseconds / 29 / 2;
+}
+
+//o valor medido pelo sensor Ping
+int leituraPing(){
+  
+  pinMode(PingPin, OUTPUT);
+  digitalWrite(PingPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(PingPin, HIGH);
+  delayMicroseconds(5);
+  digitalWrite(PingPin, LOW);
+  pinMode(PingPin, INPUT);
+  
+  durationPing = pulseIn(PingPin,HIGH);
+  
+  cmPing = distancePing (durationPing);
+  
+  return cmPing;
+}
+
+long distancePing (long microseconds){
+  return microseconds / 29 / 2;
+}
+
+int getGyroValues () {
+  int MSB, LSB;
+
+  MSB = readI2C(0x29);
+  LSB = readI2C(0x28);
+  x = ((MSB << 8) | LSB);
+
+  MSB = readI2C(0x2B);
+  LSB = readI2C(0x2A);
+  y = ((MSB << 8) | LSB);
+
+  MSB = readI2C(0x2D);
+  LSB = readI2C(0x2C);
+  z = ((MSB << 8) | LSB);
+
+  x = x/600;
+  y = y/600;
+  z = z/10;
+  
+  if(z < -20){
+    tempoDelay = -z*2;
+  }
+  if(z > 6){
+    tempoDelay = z*2;
+  }
+  else{
+    tempoDelay = 0;
+  }
+  return z;
+  return tempoDelay;
+}
+
+int readI2C (byte regAddr) {
+    Wire.beginTransmission(Addr);
+    Wire.write(regAddr);                // Register address to read
+    Wire.endTransmission();             // Terminate request
+    Wire.requestFrom(Addr, 1);          // Read a byte
+    while(!Wire.available()) { };       // Wait for receipt
+    return(Wire.read());                // Get result
+}
+
+void writeI2C (byte regAddr, byte val) {
+    Wire.beginTransmission(Addr);
+    Wire.write(regAddr);
+    Wire.write(val);
+    Wire.endTransmission();
+}
