@@ -1,0 +1,182 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:paddingBottom="@dimen/activity_vertical_margin"
+    android:paddingLeft="@dimen/activity_horizontal_margin"
+    android:paddingRight="@dimen/activity_horizontal_margin"
+    android:paddingTop="@dimen/activity_vertical_margin"
+    tools:context="com.example.androidusbhostarduino.MainActivity"
+    android:weightSum="1">
+
+        
+    <SeekBar
+        android:id="@+id/seekbar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:max="100"
+        android:progress="0"/>
+    
+    <ToggleButton 
+        android:id="@+id/arduinoled"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textOn="ON"
+        android:textOff="OFF"
+        android:onClick="ondePassou"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Homebot text"
+        android:id="@+id/num10"
+        android:layout_gravity="center_horizontal" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingTop="16dp"
+                android:id="@+id/valorSTRF"
+                android:layout_gravity="center_horizontal"
+                android:text="S TRF"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingTop="16dp"
+                android:id="@+id/StringTRF"
+                android:layout_gravity="center_horizontal"
+                android:text="Comando passou TRF"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingTop="16dp"
+                android:id="@+id/intTRF"
+                android:layout_gravity="center_horizontal"
+                android:text="rxCmd TRF"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingTop="16dp"
+                android:id="@+id/somaTRF"
+                android:layout_gravity="center_horizontal"
+                android:text="Soma dos TRFs"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingTop="16dp"
+                android:id="@+id/zerosTRFs"
+                android:layout_gravity="center_horizontal"
+                android:text="TRF foi z em 0 vezes"/>
+        </LinearLayout>
+
+        <View
+            android:layout_width="1dp"
+            android:layout_height="match_parent"
+            android:background="@android:color/darker_gray"/>
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingTop="16dp"
+            android:id="@+id/valorSPing"
+            android:layout_gravity="center_horizontal"
+            android:text="S Ping"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingTop="16dp"
+            android:id="@+id/StringPing"
+            android:layout_gravity="center_horizontal"
+            android:text="Comando passou Ping"/>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingTop="16dp"
+            android:id="@+id/intPing"
+            android:layout_gravity="center_horizontal"
+            android:text="rxCmd Ping"/>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingTop="16dp"
+            android:id="@+id/somaPing"
+            android:layout_gravity="center_horizontal"
+            android:text="Soma dos Pings"/>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingTop="16dp"
+            android:id="@+id/zerosPings"
+            android:layout_gravity="center_horizontal"
+            android:text="Ping foi z em 0 vezes"/>
+        </LinearLayout>
+    </LinearLayout>
+    <View
+        android:layout_marginTop="16dp"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@android:color/darker_gray"/>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingTop="16dp"
+                android:id="@+id/valorSGiro"
+                android:layout_gravity="center_horizontal"
+                android:text="S Giro"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingTop="16dp"
+                android:id="@+id/StringGiro"
+                android:layout_gravity="center_horizontal"
+                android:text="Comando passou Giro"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingTop="16dp"
+                android:id="@+id/intGiro"
+                android:layout_gravity="center_horizontal"
+                android:text="rxCmd Giro"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingTop="16dp"
+                android:id="@+id/somaGiro"
+                android:layout_gravity="center_horizontal"
+                android:text="Soma dos Giros"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingTop="16dp"
+                android:id="@+id/zerosGiros"
+                android:layout_gravity="center_horizontal"
+                android:text="Giro foi z em 0 vezes"/>
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>
