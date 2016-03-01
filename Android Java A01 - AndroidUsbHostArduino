@@ -1,0 +1,525 @@
+package com.example.androidusbhostarduino;
+
+import android.content.Context;
+import android.content.Intent;
+import android.hardware.usb.UsbConstants;
+import android.hardware.usb.UsbDevice;
+import android.hardware.usb.UsbDeviceConnection;
+import android.hardware.usb.UsbEndpoint;
+import android.hardware.usb.UsbInterface;
+import android.hardware.usb.UsbManager;
+import android.hardware.usb.UsbRequest;
+import android.os.Bundle;
+import android.support.v7.app.ActionBarActivity;
+import android.view.View;
+import android.widget.CompoundButton;
+import android.widget.CompoundButton.OnCheckedChangeListener;
+import android.widget.SeekBar;
+import android.widget.TextView;
+import android.widget.ToggleButton;
+
+import java.nio.ByteBuffer;
+
+public class MainActivity extends ActionBarActivity implements Runnable {
+
+	private static final int CMD_ROBO_ON_OFF = 49;
+	private static final int CMD_SENSOR_TRF = 50;
+	private static final int CMD_SENSOR_PING = 51;
+	private static final int CMD_GIROSCOPIO = 52;
+	//private static final int CMD_LED_ON_OFF = 5;
+	private static final int CMD_MOTOR_C = 53;
+	//private static final int CMD_PARAR = 6;
+	private static final int CMD_FRENTE = 54;
+	private static final int CMD_ESQUERDA = 55;
+	private static final int CMD_DIREITA = 56; //0x0a
+	private static final int CMD_RE = 57;  //0b
+	private static final int CMD_ALINHAR_ESQUERDA = 48;  //0c
+	private static final int CMD_ALINHAR_DIREITA = 61;  //0d
+
+	SeekBar bar;
+	ToggleButton buttonLed;
+
+	boolean liga;
+	int ZTRF = 0;
+	int ZPing = 0;
+	int ZGiro = 0;
+
+	int STRF = 0;
+	int SPing = 0;
+	int SGiro = 0;
+
+	int valorRxCmdTRF = 0;
+	int valorRxCmdPing = 0;
+	int valorRxCmdGiro = 0;
+
+	int comandoTRF;
+	int comandoPing;
+	int giroscopio;
+
+	String TRFString;
+	String PingString;
+	String GiroString;
+
+	int somaTRF = 0;
+	int somaPing = 0;
+	int somaGiro = 0;
+
+	boolean ligarPing = true;
+	boolean virarEsquerda = false;
+	boolean afterRe = false;
+
+	private UsbManager usbManager;
+	private UsbDevice deviceFound;
+	private UsbDeviceConnection usbDeviceConnection;
+	private UsbInterface usbInterfaceFound = null;
+	private UsbEndpoint endpointOut = null;
+	private UsbEndpoint endpointIn = null;
+
+	//Andrews
+	private Thread thread = null;
+
+	@Override
+	protected void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
+		setContentView(R.layout.activity_main);
+
+		bar = (SeekBar) findViewById(R.id.seekbar);
+		buttonLed = (ToggleButton) findViewById(R.id.arduinoled);
+		buttonLed.setOnCheckedChangeListener(new OnCheckedChangeListener() {
+
+			@Override
+			public void onCheckedChanged(CompoundButton buttonView,boolean isChecked) {
+				if (isChecked) {
+					if(valorRxCmdPing != 0 && valorRxCmdTRF != 0 & valorRxCmdGiro !=0){
+						valorRxCmdTRF = 0;
+						valorRxCmdPing = 0;
+						valorRxCmdGiro = 0;
+					}
+					liga = true;
+					//s = 0;
+
+					//Andrews
+					thread = new Thread(MainActivity.this);
+					thread.start();
+				} else {
+					liga = false;
+					//s = 4;
+
+					//Andrews
+					thread.interrupt();
+
+				}
+			}
+		});
+		usbManager = (UsbManager) getSystemService(Context.USB_SERVICE);
+
+		//Andrews-----------
+		Intent intent = getIntent();
+		String action = intent.getAction();
+
+		UsbDevice device = (UsbDevice) intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
+		if (UsbManager.ACTION_USB_DEVICE_ATTACHED.equals(action)) {
+			setDevice(device);
+		} else if (UsbManager.ACTION_USB_DEVICE_DETACHED.equals(action)) {
+			if (deviceFound != null && deviceFound.equals(device)) {
+				//setDevice(null);
+			}
+		}
+		//-------------
+
+	}
+
+	/*@Override
+	public void onResume() {
+		super.onResume();
+
+		Intent intent = getIntent();
+		String action = intent.getAction();
+
+		//colocar dentro de onCreate
+		UsbDevice device = (UsbDevice) intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
+		if (UsbManager.ACTION_USB_DEVICE_ATTACHED.equals(action)) {
+			setDevice(device);
+		} else if (UsbManager.ACTION_USB_DEVICE_DETACHED.equals(action)) {
+			if (deviceFound != null && deviceFound.equals(device)) {
+				//setDevice(null);
+			}
+		}
+	}*/
+
+
+	private void setDevice(UsbDevice device) {
+		usbInterfaceFound = null;
+		endpointOut = null;
+		endpointIn = null;
+
+		for (int i = 0; i < device.getInterfaceCount(); i++) {
+			UsbInterface usbif = device.getInterface(i);
+
+			UsbEndpoint tOut = null;
+			UsbEndpoint tIn = null;
+
+			int tEndpointCnt = usbif.getEndpointCount();
+			if (tEndpointCnt >= 2) {
+				for (int j = 0; j < tEndpointCnt; j++) {
+					if (usbif.getEndpoint(j).getType() == UsbConstants.USB_ENDPOINT_XFER_BULK) {
+						if (usbif.getEndpoint(j).getDirection() == UsbConstants.USB_DIR_OUT) {
+							tOut = usbif.getEndpoint(j);
+						} else if (usbif.getEndpoint(j).getDirection() == UsbConstants.USB_DIR_IN) {
+							tIn = usbif.getEndpoint(j);
+						}
+					}
+				}
+				if (tOut != null && tIn != null) {
+					// This interface have both USB_DIR_OUT
+					// and USB_DIR_IN of USB_ENDPOINT_XFER_BULK
+					usbInterfaceFound = usbif;
+					endpointOut = tOut;
+					endpointIn = tIn;
+				}
+			}
+		}
+		if (usbInterfaceFound == null) {
+			return;
+		}
+		deviceFound = device;
+		if (device != null) {
+			UsbDeviceConnection connection =
+					usbManager.openDevice(device);
+			if (connection != null &&
+					connection.claimInterface(usbInterfaceFound, true)) {
+				usbDeviceConnection = connection;
+
+				//Andrews
+				/*Thread thread = new Thread(this);
+				thread.start();*/
+
+			} else {
+				usbDeviceConnection = null;
+			}
+		}
+	}
+
+	private void sendCommand(int control) {
+		synchronized (this) {
+
+			if (usbDeviceConnection != null) {
+				byte[] message = new byte[1];
+				message[0] = (byte) control;
+				usbDeviceConnection.bulkTransfer(endpointOut,
+						message, message.length, 0);
+			}
+		}
+		/*TextView scoreView = (TextView) findViewById(R.id.RxCmdLED);
+		scoreView.setText(String.valueOf(control));*/
+	}
+
+
+	//Andrews--------
+	/*public void run() {
+		while (liga)
+		{
+			//Toast.makeText(MainActivity.this, "executando run() ", Toast.LENGTH_SHORT).show();
+			try
+			{
+				Thread.sleep(100);
+			}catch(InterruptedException e){}
+		}
+	}
+
+	public void run2() {
+		if(usbDeviceConnection == null)
+			return;
+		ByteBuffer buffer = ByteBuffer.allocate(1);
+		UsbRequest request = new UsbRequest();
+		request.initialize(usbDeviceConnection, endpointIn);
+		while (liga)
+		{
+			if (request.queue(buffer, 1) == true)
+			{
+				if (usbDeviceConnection.requestWait() == request)
+				{
+					byte rxCmd = buffer.get(0);
+					System.out.println(rxCmd); // displayRxCmd(rxCmd);
+				}
+			}
+			try
+			{
+				Thread.sleep(100);
+			}catch(InterruptedException e){}
+		}
+	}
+	//------------
+*/
+
+	@Override
+	public void run(){
+		//Andrews
+		if(usbDeviceConnection == null) {
+			TRFString = "nao conectado";
+			PingString = "nao conectado";
+			return;
+		}
+		ByteBuffer buffer = ByteBuffer.allocate(3);
+		UsbRequest request = new UsbRequest();
+		request.initialize(usbDeviceConnection, endpointIn);
+		while (liga) {
+			if (request.queue(buffer, 3) == true) {
+				if (usbDeviceConnection.requestWait() == request) {
+					byte rxCmdTRF = buffer.get(0);
+					byte rxCmdPing = buffer.get(1);
+					byte rxCmdGiro = buffer.get(2);
+
+					algoritmoRxCmd(rxCmdTRF, rxCmdPing, rxCmdGiro);
+
+				}try {
+					Thread.sleep(100);
+				} catch (InterruptedException e) {
+				}
+			}
+		}
+	}
+
+	public void algoritmoRxCmd (byte rxCmdTRF, byte rxCmdPing, byte rxCmdGiro){
+		if (rxCmdTRF != 0 || rxCmdTRF != 10) {
+			somaTRF = somaTRF + rxCmdTRF;
+			valorRxCmdTRF = rxCmdTRF;
+			if(valorRxCmdTRF < 25){
+				comandoTRF = 1;
+			}
+			else if(valorRxCmdTRF > 24){
+				comandoTRF = 2;
+			}
+			TRFString = "leu o sensor TRF";
+			STRF++;
+		}
+		if (rxCmdTRF == 0 || rxCmdTRF == 10) {
+			ZTRF++;
+		}
+		if(rxCmdPing != 0){
+			somaPing = somaPing + rxCmdPing;
+			valorRxCmdPing = rxCmdPing;
+			if(valorRxCmdPing < 9){
+				comandoPing = 1;
+			}
+			else if(valorRxCmdPing > 8 && valorRxCmdPing < 14){
+				comandoPing = 2;
+			}
+			else if(valorRxCmdPing > 13 && valorRxCmdPing < 26){
+				comandoPing = 3;
+			}
+			else if(valorRxCmdPing > 25 && valorRxCmdPing < 51){
+				comandoPing = 4;
+			}
+			else if(valorRxCmdPing > 50){
+				comandoPing = 5;
+			}
+			PingString = "leu o sensor Ping";
+			SPing++;
+		}
+		if(rxCmdPing == 0){
+			ZPing++;
+		}
+		if(rxCmdGiro > 6){
+			//rxCmdGiro > 119 && rxCmdGiro < 240
+			giroscopio = 3;
+			somaGiro = somaGiro + rxCmdGiro;
+			valorRxCmdGiro = rxCmdGiro;
+			GiroString = "Desviado p/ direita";
+			SGiro++;
+		}
+		if(rxCmdGiro < -20){
+			//rxCmdGiro > 0 && rxCmdGiro < 120
+			giroscopio = 2;
+			somaGiro = somaGiro + rxCmdGiro;
+			valorRxCmdGiro = rxCmdGiro;
+			GiroString = "Desviado p/ esquerda";
+			SGiro++;
+		}
+		if(rxCmdGiro > -21 && rxCmdGiro < 7){
+			//rxCmdGiro > 239
+			giroscopio = 1;
+			ZGiro++;
+		}
+
+		valorRxCmd(comandoTRF, comandoPing, giroscopio);
+	}
+
+	public void valorRxCmd(int comandoTRF, int comandoPing, int giroscopio) {
+		if (valorRxCmdTRF != 0 && valorRxCmdPing != 0 && valorRxCmdGiro > -21 && valorRxCmdGiro < 7) {
+			if (giroscopio == 1) {  //nao z
+				if (ligarPing == false) {     //ping false
+					if (comandoTRF == 2) {
+						//7
+						if (comandoPing < 4) {
+							ligarPing = true;
+							sendCommand(CMD_ROBO_ON_OFF);//Led ON
+							//direita apos quina
+						}
+						//6
+						else if (comandoPing > 3) {
+							sendCommand(CMD_ROBO_ON_OFF);//Led OFF
+							sendCommand(CMD_FRENTE);  //frente -3
+						}
+					} else if (comandoTRF == 1) {
+						ligarPing = true;
+						sendCommand(CMD_ESQUERDA); //esquerda -5
+					}
+				} else if (ligarPing == true && virarEsquerda == false) {   //esquerda false -- ping true
+
+					//1  4  8
+					if (comandoTRF == 2 && comandoPing < 4) {     //trf 2 --- ping 1,2,3
+						sendCommand(CMD_FRENTE);  //frente -3
+					}
+					//2  9
+					else if (comandoTRF == 1 && comandoPing < 4) {    //trf 1 --- ping 1,2,3
+						sendCommand(CMD_ROBO_ON_OFF); //parar -7
+						sendCommand(CMD_MOTOR_C); //0?
+						virarEsquerda = true;
+					}
+					//5
+					else if (comandoPing == 4) {      //ping 4
+						ligarPing = false;
+						sendCommand(CMD_DIREITA); //direita -4
+					} else if (comandoPing == 5) {      //ping 5
+						ligarPing = false;
+						sendCommand(CMD_DIREITA); //direita -4
+					}
+				} else if (ligarPing == true && virarEsquerda == true) {   //esquerda true -- ping true
+					//10
+					if (comandoPing < 4) {
+						afterRe = true;
+						sendCommand(CMD_RE);  // Re -6
+					}
+					//3
+					else if (comandoPing == 4 && afterRe == false) {
+						virarEsquerda = false;
+						sendCommand(CMD_MOTOR_C); //180?
+						sendCommand(CMD_ESQUERDA); //esquerda -5
+					} else if (comandoPing == 5 && afterRe == false) {
+						virarEsquerda = false;
+						sendCommand(CMD_MOTOR_C); //180?
+						sendCommand(CMD_ESQUERDA); //esquerda -5
+					}
+					//11
+					else if (comandoPing > 3 && afterRe == true) {
+						//delay(1200);
+						afterRe = false;
+						virarEsquerda = false;
+						ligarPing = false;
+						sendCommand(CMD_MOTOR_C); //180?
+						sendCommand(CMD_ESQUERDA); //esquerda -5
+					}
+				}
+			}
+			if (giroscopio == 2) {
+				afterRe = false;
+				sendCommand(CMD_ALINHAR_ESQUERDA); //girar p/esquerda -9
+			}
+			if (giroscopio == 3) {
+
+				afterRe = false;
+				sendCommand(CMD_ALINHAR_DIREITA); //girar p/direita -8
+			}
+			liga = false;
+			TRFString = "liga false";
+			PingString = "liga false";
+			GiroString = "liga false";
+		}
+	}
+
+	public void displayValorSTRF(String score) {
+		TextView scoreView = (TextView) findViewById(R.id.valorSTRF);
+		scoreView.setText(String.valueOf(score));
+	}
+
+	public void displayStringTRF(String score) {
+		TextView scoreView = (TextView) findViewById(R.id.StringTRF);
+		scoreView.setText(String.valueOf(score));
+	}
+
+	public void displayIntTRF(String score){
+		TextView scoreView = (TextView) findViewById(R.id.intTRF);
+		scoreView.setText(String.valueOf(score));
+	}
+
+	public void displaySomaTRF(String score) {
+		TextView scoreView = (TextView) findViewById(R.id.somaTRF);
+		scoreView.setText(String.valueOf(score));
+	}
+
+	public void displayZerosTRFs(String score) {
+		TextView scoreView = (TextView) findViewById(R.id.zerosTRFs);
+		scoreView.setText(String.valueOf(score));
+	}
+
+	public void displayValorSPing(String score) {
+		TextView scoreView = (TextView) findViewById(R.id.valorSPing);
+		scoreView.setText(String.valueOf(score));
+	}
+
+	public void displayStringPing(String score) {
+		TextView scoreView = (TextView) findViewById(R.id.StringPing);
+		scoreView.setText(String.valueOf(score));
+	}
+
+	public void displayIntPing(String score){
+		TextView scoreView = (TextView) findViewById(R.id.intPing);
+		scoreView.setText(String.valueOf(score));
+	}
+
+	public void displaySomaPing(String score) {
+		TextView scoreView = (TextView) findViewById(R.id.somaPing);
+		scoreView.setText(String.valueOf(score));
+	}
+
+	public void displayZerosPings(String score) {
+		TextView scoreView = (TextView) findViewById(R.id.zerosPings);
+		scoreView.setText(String.valueOf(score));
+	}
+
+	public void displayValorSGiro(String score) {
+		TextView scoreView = (TextView) findViewById(R.id.valorSGiro);
+		scoreView.setText(String.valueOf(score));
+	}
+
+	public void displayStringGiro(String score) {
+		TextView scoreView = (TextView) findViewById(R.id.StringGiro);
+		scoreView.setText(String.valueOf(score));
+	}
+
+	public void displayIntGiro(String score){
+		TextView scoreView = (TextView) findViewById(R.id.intGiro);
+		scoreView.setText(String.valueOf(score));
+	}
+
+	public void displaySomaGiro(String score) {
+		TextView scoreView = (TextView) findViewById(R.id.somaGiro);
+		scoreView.setText(String.valueOf(score));
+	}
+
+	public void displayZerosGiros(String score) {
+		TextView scoreView = (TextView) findViewById(R.id.zerosGiros);
+		scoreView.setText(String.valueOf(score));
+	}
+
+	public void ondePassou(View v){
+		displayValorSTRF("S TRF = " + STRF);
+		displayStringTRF(TRFString);
+		displayIntTRF("primeiro TRF = " + valorRxCmdTRF);
+		displaySomaTRF("Soma dos TRFs = " + somaTRF);
+		displayZerosTRFs("TRF foi z em " + ZTRF + " vezes");
+		displayValorSPing("S Ping = " + SPing);
+		displayStringPing(PingString);
+		displayIntPing("primeiro Ping = " + valorRxCmdPing);
+		displaySomaPing("Soma dos Pings = " + somaPing);
+		displayZerosPings("Ping foi z em " + ZPing + " vezes");
+		displayValorSGiro("S Giro = " + SGiro);
+		displayStringGiro(GiroString);
+		displayIntGiro("primeiro Giro = " + valorRxCmdGiro);
+		displaySomaGiro("Soma dos Giros = " + somaGiro);
+		displayZerosGiros("Giro foi z em " + ZGiro + " vezes");
+	}
+}
+
+
